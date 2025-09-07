@@ -16,7 +16,7 @@ Users can describe the dataset they want in natural language, and the app genera
 
 
 ## 📂 Project Structure
-'''Dataset-Generator-using-GenAI/
+```Dataset-Generator-using-GenAI/
 │── Backend/ # Python backend (API + Gemini integration)
 │ ├── main.py # Entry point for backend
 │ ├── generator.py # Synthetic dataset generator logic
@@ -36,7 +36,7 @@ Users can describe the dataset they want in natural language, and the app genera
 │ ├── package.json # Frontend dependencies
 │
 │── .gitignore
-│── README.md'''
+│── README.md```
 
 ## 🛠️ Stack Technology
 
