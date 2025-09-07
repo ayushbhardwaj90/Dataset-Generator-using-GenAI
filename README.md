@@ -15,7 +15,8 @@ Users can describe the dataset they want in natural language, and the app genera
 
 
 
-Dataset-Generator-using-GenAI/
+## 📂 Project Structure
+
 │── Backend/              # Python backend (API + Gemini integration)
 │   ├── main.py
 │   ├── generator.py
@@ -38,15 +39,13 @@ Dataset-Generator-using-GenAI/
 │── README.md
 
 
-**Bold Text**🛠️ Tech Stack
+## 🛠️ Stack Tecnologico
 
-_Italic Text_ Frontend: React.js, Tailwind CSS
+- **Frontend:** *React.js, Tailwind CSS*  
+- **Backend:** *FastAPI / Flask (Python)*  
+- **Intelligenza Artificiale Generativa:** *Google Gemini 2.5 API*  
+- **Database:** *SQLite (per cronologia e autenticazione)*  
 
-_Italic Text_ Backend: FastAPI/Flask, Python
-
-_Italic Text_ Generative AI: Google Gemini 2.5 API
-
-_Italic Text_ Database: SQLite (for history & auth)
 
 🔮 Future Enhancements
 
