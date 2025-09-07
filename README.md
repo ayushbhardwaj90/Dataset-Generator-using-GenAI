@@ -17,27 +17,27 @@ Users can describe the dataset they want in natural language, and the app genera
 
 ## 📂 Project Structure
 
-│── Backend/              # Python backend (API + Gemini integration)
-│   ├── main.py
-│   ├── generator.py
-│   ├── models.py
-│   ├── exports.py
-│   ├── schemas.py
-│   ├── requirements.txt
+Dataset-Generator-using-GenAI/
+│── Backend/ # Python backend (API + Gemini integration)
+│ ├── main.py # Entry point for backend
+│ ├── generator.py # Synthetic dataset generator logic
+│ ├── models.py # Database models
+│ ├── exports.py # CSV/Excel export utilities
+│ ├── schemas.py # Request/response schemas
+│ ├── requirements.txt # Backend dependencies
 │
-│── Frontend/             # React frontend (UI components)
-│   ├── public/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── auth/     # Login/Register/Reset forms
-│   │   │   ├── data/     # Dataset forms & tables
-│   │   │   └── views/    # History, Getting Started etc.
-│   │   └── App.js
-│   ├── package.json
+│── Frontend/ # React frontend (UI components)
+│ ├── public/ # Static files
+│ ├── src/
+│ │ ├── components/
+│ │ │ ├── auth/ # Login/Register/Password Reset forms
+│ │ │ ├── data/ # Dataset forms & tables
+│ │ │ └── views/ # History, Getting Started, etc.
+│ │ └── App.js # Main React app entry point
+│ ├── package.json # Frontend dependencies
 │
 │── .gitignore
 │── README.md
-
 
 ## 🛠️ Stack Technology
 
@@ -47,7 +47,7 @@ Users can describe the dataset they want in natural language, and the app genera
 - **Database:** *SQLite (per cronologia e autenticazione)*  
 
 
-🔮 Future Enhancements
+##🔮 Future Enhancements
 
 ✅ More robust data validation pipeline
 
