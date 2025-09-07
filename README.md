@@ -16,7 +16,7 @@ Users can describe the dataset they want in natural language, and the app genera
 
 
 ## 📂 Project Structure
-```Dataset-Generator-using-GenAI/
+Dataset-Generator-using-GenAI/
 │── Backend/ # Python backend (API + Gemini integration)
 │ ├── main.py # Entry point for backend
 │ ├── generator.py # Synthetic dataset generator logic
@@ -38,7 +38,7 @@ Users can describe the dataset they want in natural language, and the app genera
 │── .gitignore
 │── README.md```
 
-## 🛠️ Stack Technology
+## 🛠️ Tech Stack
 
 - **Frontend:** *React.js, Tailwind CSS*  
 - **Backend:** *FastAPI / Flask (Python)*  
@@ -49,9 +49,10 @@ Users can describe the dataset they want in natural language, and the app genera
 
 ## 🔮 Future Enhancements
 
-- ✅ More robust data validation pipeline  
-- ✅ Prompt auto-correction for invalid inputs  
-- ✅ Support for JSON and Parquet export  
-- ✅ Multi-language dataset generation  
+- [x] More robust data validation pipeline  
+- [ ] Prompt auto-correction for invalid inputs  
+- [ ] Support for JSON and Parquet export  
+- [ ] Multi-language dataset generation  
+
   
 
