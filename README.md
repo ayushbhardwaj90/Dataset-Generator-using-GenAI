@@ -45,13 +45,13 @@ Users can describe the dataset they want in natural language, and the app genera
 - **Intelligenza Artificiale Generativa:** *Google Gemini 2.5 API*  
 - **Database:** *SQLite (per cronologia e autenticazione)*  
 
+---
 
-##🔮 Future Enhancements
+## 🔮 Future Enhancements
 
-✅ More robust data validation pipeline
+- ✅ More robust data validation pipeline  
+- ✅ Prompt auto-correction for invalid inputs  
+- ✅ Support for JSON and Parquet export  
+- ✅ Multi-language dataset generation  
+  
 
-✅ Prompt auto-correction for invalid inputs
-
-✅ Support for JSON and Parquet export
-
-✅ Multi-language dataset generation
