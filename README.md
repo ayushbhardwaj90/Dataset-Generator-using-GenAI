@@ -39,7 +39,7 @@ Users can describe the dataset they want in natural language, and the app genera
 │── README.md
 
 
-## 🛠️ Stack Tecnologico
+## 🛠️ Stack Technology
 
 - **Frontend:** *React.js, Tailwind CSS*  
 - **Backend:** *FastAPI / Flask (Python)*  
