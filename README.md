@@ -36,8 +36,8 @@ Users can describe the dataset they want in natural language, and the app genera
 │ ├── package.json # Frontend dependencies
 │
 │── .gitignore
-│── README.md```
-
+│── README.md
+```
 ## 🛠️ Tech Stack
 
 - **Frontend:** *React.js, Tailwind CSS*  
