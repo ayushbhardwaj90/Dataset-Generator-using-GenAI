@@ -42,8 +42,8 @@ Users can describe the dataset they want in natural language, and the app genera
 
 - **Frontend:** *React.js, Tailwind CSS*  
 - **Backend:** *FastAPI / Flask (Python)*  
-- **Intelligenza Artificiale Generativa:** *Google Gemini 2.5 API*  
-- **Database:** *SQLite (per cronologia e autenticazione)*  
+- **Gen AI Integration:** *Google Gemini 2.5 API*  
+- **Database:** *SQLite *  
 
 ---
 
