@@ -1,5 +1,3 @@
-// ayushbhardwaj90/dataset-generator-using-genai/Dataset-Generator-using-GenAI-79155e47a57111fac9d81a099df114ccf1eeb342/api.js
-
 const api = {
   async request(method, url, data = null, token = null) {
     const headers = {
@@ -23,10 +21,9 @@ const api = {
       throw new Error(errorData.detail || 'Something went wrong');
     }
     try {
-      // Some endpoints might not return JSON (e.g., successful exports)
       return await response.json();
     } catch (e) {
-      return response; // Return the response object directly if no JSON
+      return response;
     }
   },
 
@@ -82,32 +79,50 @@ const api = {
     return this.request('POST', `${API_BASE_URL}/augment`, augmentRequest, token);
   },
 
+  // UPDATED EXPORT FUNCTION with better error handling and debugging
   async exportData(format, domain, rows, custom_prompt, token, API_BASE_URL) {
     let url = `${API_BASE_URL}/export/${format}?domain=${domain}&rows=${rows}`;
     if (custom_prompt) {
       url += `&custom_prompt=${encodeURIComponent(custom_prompt)}`;
     }
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
+    console.log('🔍 Export URL:', url);
+    console.log('🔍 Export format:', format);
+    console.log('🔍 Export token:', token ? 'Present' : 'Missing');
 
-    if (!response.ok) {
-      let errorDetail = 'Something went wrong during export';
-      try {
-        const errorData = await response.json();
-        errorDetail = errorData.detail || errorDetail;
-      } catch {
-        // Fallback if the response is not valid JSON
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      console.log('🔍 Export response status:', response.status);
+      console.log('🔍 Export response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        let errorDetail = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          errorDetail = errorData.detail || errorDetail;
+          console.error('🔍 Export error data:', errorData);
+        } catch {
+          // Response might not be JSON for binary data
+          console.log('🔍 Export error: Response not JSON (possibly binary data error)');
+        }
+        throw new Error(errorDetail);
       }
-      throw new Error(errorDetail);
-    }
 
-    return response;
+      console.log('🔍 Export response successful');
+      return response; // Return the response for blob handling
+    } catch (error) {
+      console.error('🔍 Export API error:', error);
+      throw error;
+    }
   }
 };
 
 export { api };
+
+

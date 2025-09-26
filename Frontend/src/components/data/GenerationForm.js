@@ -181,10 +181,26 @@ export const GenerationForm = ({ onGenerateSuccess, onRelationalGenerateSuccess 
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-700 dark:text-white dark:border-gray-600 h-24 tour-step-description"
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value)}
-                placeholder={selectedDomain === 'Custom' ? "e.g., Generate 5 records for a list of magical artifacts with name, rarity, and magical properties." : `e.g., Generate data for ${selectedDomain.toLowerCase()} with a focus on recent transactions.`}
+                placeholder={selectedDomain === 'Custom' ? "e.g., Generate 5 records for a list of magical artifacts with name, rarity, and magical properties." : `e.g., Describe the content you need for the ${selectedDomain.toLowerCase()} domain.`}
                 required={selectedDomain === 'Custom'}
                 disabled={loading}
               ></textarea>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="rows">
+                Number of Rows
+              </label>
+              <input
+                type="number"
+                id="rows"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                value={rows}
+                onChange={(e) => setRows(parseInt(e.target.value))}
+                min="1"
+                required
+                disabled={loading}
+              />
             </div>
             
             {selectedDomain === 'Custom' && (
@@ -386,7 +402,7 @@ export const GenerationForm = ({ onGenerateSuccess, onRelationalGenerateSuccess 
                           onClick={() => handleRemoveTable(tableIndex)}
                           className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                       <ul className="list-disc list-inside text-sm mt-1 ml-4">

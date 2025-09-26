@@ -10,6 +10,13 @@ export const AuthProvider = ({ children }) => {
   // Change this to the IP address of your backend server
   const API_BASE_URL = 'http://localhost:8000';
 
+  const logout = useCallback(() => {
+    localStorage.removeItem('access_token');
+    setToken(null);
+    setUser(null);
+    window.location.reload();
+  }, []);
+
   const fetchUser = useCallback(async (authToken) => {
     if (!authToken) {
       setUser(null);
@@ -35,7 +42,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [logout]);
 
   useEffect(() => {
     fetchUser(token);
@@ -47,13 +54,6 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
   };
 
-  const logout = () => {
-    localStorage.removeItem('access_token');
-    setToken(null);
-    setUser(null);
-    window.location.reload();
-  };
-
   return (
     <AuthContext.Provider value={{ user, token, loading, login, logout, API_BASE_URL }}>
       {children}
@@ -61,4 +61,10 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
