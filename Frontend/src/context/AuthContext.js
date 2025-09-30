@@ -8,7 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   // Change this to the IP address of your backend server
-  const API_BASE_URL = 'http://localhost:8000';
+  const API_BASE_URL = process.env.VITE_API_BASE_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
 
   const logout = useCallback(() => {
     localStorage.removeItem('access_token');
