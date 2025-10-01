@@ -7,7 +7,7 @@ import google.api_core.exceptions as api_exceptions  # Import the specific Gemin
 from auth_new import auth_manager, get_current_user, get_db
 from authlib.integrations.starlette_client import OAuth as OAuthClient
 from exports import exporter
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, Response
 from fastapi.security import OAuth2PasswordRequestForm
@@ -40,9 +40,21 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicitly include OPTIONS
     allow_headers=["*"],
 )
+
+# Add explicit OPTIONS handler for preflight requests
+@app.options("/{full_path:path}")
+async def options_handler(request: Request):
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
 
 generator = DatasetGenerator()
 
@@ -74,6 +86,9 @@ def read_root():
 
 @app.post("/register", response_model=UserResponse)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
+    print(f"🔍 Registration attempt for user: {user.username}")  # Debug log
+    print(f"🔍 Password length: {len(user.password)} characters")  # Debug log
+    
     if auth_manager.get_user(db, username=user.username):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -86,26 +101,46 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
     
-    db_user = auth_manager.create_user(
-        db=db, 
-        username=user.username, 
-        email=user.email, 
-        password=user.password
-    )
-    return db_user
+    try:
+        db_user = auth_manager.create_user(
+            db=db, 
+            username=user.username, 
+            email=user.email, 
+            password=user.password
+        )
+        print(f"✅ User {user.username} created successfully")  # Debug log
+        return db_user
+    except Exception as e:
+        print(f"❌ Registration error: {str(e)}")  # Debug log
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Registration failed: {str(e)}"
+        )
 
 @app.post("/token", response_model=Token)
 def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = auth_manager.authenticate_user(db, form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    print(f"🔍 Login attempt for user: {form_data.username}")  # Debug log
     
-    access_token = auth_manager.create_access_token(data={"sub": user.username})
-    return {"access_token": access_token, "token_type": "bearer"}
+    try:
+        user = auth_manager.authenticate_user(db, form_data.username, form_data.password)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        access_token = auth_manager.create_access_token(data={"sub": user.username})
+        print(f"✅ User {form_data.username} logged in successfully")  # Debug log
+        return {"access_token": access_token, "token_type": "bearer"}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"❌ Login error: {str(e)}")  # Debug log
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Login failed: {str(e)}"
+        )
 
 @app.get("/me", response_model=UserResponse)
 def get_current_user_info(current_user: User = Depends(get_current_user)):
@@ -137,7 +172,7 @@ async def forgot_password(request: ForgotPasswordRequest, background_tasks: Back
         return {"message": "If a matching email was found, a password reset link has been sent."}
     
     token = auth_manager.create_reset_token(data={"sub": user.email})
-    reset_url = f"http://localhost:3000/reset-password?token={token}"
+    reset_url = f"https://data-genie-jade.vercel.app/reset-password?token={token}"  # Updated to use your Vercel URL
     background_tasks.add_task(send_password_reset_email, user.email, reset_url)
     return {"message": "If a matching email was found, a password reset link has been sent."}
 
