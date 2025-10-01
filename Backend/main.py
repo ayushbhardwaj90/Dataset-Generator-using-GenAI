@@ -44,18 +44,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add explicit OPTIONS handler for preflight requests
-@app.options("/{full_path:path}")
-async def options_handler(request: Request):
-    return Response(
-        status_code=200,
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-        }
-    )
-
 generator = DatasetGenerator()
 
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
