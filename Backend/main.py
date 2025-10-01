@@ -32,7 +32,8 @@ app = FastAPI(title="Synthetic Dataset Generator with GenAI", version="2.0.0")
 origins = [
     "http://127.0.0.1:3000",
     "http://localhost:3000",
-    "http://10.200.21.108:3000",
+    "https://data-genie-jade.vercel.app",
+    "https://*.vercel.app",
 ]
 
 app.add_middleware(
