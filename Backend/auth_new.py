@@ -25,13 +25,23 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 class AuthManager:
+    def _truncate_password(self, password: str) -> str:
+        """Truncate password to 72 bytes for bcrypt compatibility"""
+        if len(password.encode('utf-8')) > 72:
+            return password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+        return password
+
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a plain password against its hash"""
-        return pwd_context.verify(plain_password, hashed_password)
+        # Truncate password to 72 bytes for bcrypt compatibility
+        truncated_password = self._truncate_password(plain_password)
+        return pwd_context.verify(truncated_password, hashed_password)
 
     def get_password_hash(self, password: str) -> str:
         """Hash a password"""
-        return pwd_context.hash(password)
+        # Truncate password to 72 bytes for bcrypt compatibility
+        truncated_password = self._truncate_password(password)
+        return pwd_context.hash(truncated_password)
     
     # This is the missing method that caused the error
     def verify_token(self, token: str) -> Optional[str]:
