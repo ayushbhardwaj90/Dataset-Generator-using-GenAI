@@ -1,9 +1,12 @@
+import csv
+import io
 import json
 import os
 from datetime import datetime
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import google.api_core.exceptions as api_exceptions  # Import the specific Gemini API exception
+import pandas as pd
 from auth_new import auth_manager, get_current_user, get_db
 from authlib.integrations.starlette_client import OAuth as OAuthClient
 from exports import exporter
@@ -15,6 +18,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from generator import DatasetGenerator
 from jinja2 import Environment, FileSystemLoader
 from models import GenerationHistory, User
+from pydantic import BaseModel
 from schemas import (AugmentationResponse, AugmentDataRequest,
                      ExactValueConstraint, ForgotPasswordRequest,
                      GenerationRequest, GenerationResponse, HistoryEntry,
@@ -30,6 +34,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 app = FastAPI(title="Synthetic Dataset Generator with GenAI", version="2.0.0")
 
+# CORS configuration - updated for production deployment
 origins = [
     "http://127.0.0.1:3000",
     "http://localhost:3000",
@@ -78,6 +83,9 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     print(f"🔍 Registration attempt for user: {user.username}")  # Debug log
     print(f"🔍 Password length: {len(user.password)} characters")  # Debug log
     
+    print(f"🔍 Registration attempt for user: {user.username}")  # Debug log
+    print(f"🔍 Password length: {len(user.password)} characters")  # Debug log
+    
     if auth_manager.get_user(db, username=user.username):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -105,9 +113,46 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Registration failed: {str(e)}"
         )
+    try:
+        db_user = auth_manager.create_user(
+            db=db, 
+            username=user.username, 
+            email=user.email, 
+            password=user.password
+        )
+        print(f"✅ User {user.username} created successfully")  # Debug log
+        return db_user
+    except Exception as e:
+        print(f"❌ Registration error: {str(e)}")  # Debug log
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Registration failed: {str(e)}"
+        )
 
 @app.post("/token", response_model=Token)
 def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    print(f"🔍 Login attempt for user: {form_data.username}")  # Debug log
+    
+    try:
+        user = auth_manager.authenticate_user(db, form_data.username, form_data.password)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        access_token = auth_manager.create_access_token(data={"sub": user.username})
+        print(f"✅ User {form_data.username} logged in successfully")  # Debug log
+        return {"access_token": access_token, "token_type": "bearer"}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"❌ Login error: {str(e)}")  # Debug log
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Login failed: {str(e)}"
+        )
     print(f"🔍 Login attempt for user: {form_data.username}")  # Debug log
     
     try:
@@ -161,6 +206,7 @@ async def forgot_password(request: ForgotPasswordRequest, background_tasks: Back
         return {"message": "If a matching email was found, a password reset link has been sent."}
     
     token = auth_manager.create_reset_token(data={"sub": user.email})
+    reset_url = f"https://data-genie-jade.vercel.app/reset-password?token={token}"  # Updated to use your Vercel URL
     reset_url = f"https://data-genie-jade.vercel.app/reset-password?token={token}"  # Updated to use your Vercel URL
     background_tasks.add_task(send_password_reset_email, user.email, reset_url)
     return {"message": "If a matching email was found, a password reset link has been sent."}
@@ -382,30 +428,39 @@ def get_generation_history(
             "created_at": entry.created_at.isoformat(),
             "custom_prompt": entry.custom_prompt,
             "preview": preview,
-            "data_json": entry.data_json  # ← ADD THIS LINE - Include full data
+            "data_json": entry.data_json  # Include full data
         })
     
     return {"history": result, "total": len(result)}
 
-@app.get("/export/csv")
-def export_csv(
-    domain: str, 
-    rows: int = 10, 
-    custom_prompt: Optional[str] = None,
+class ExportRequest(BaseModel):
+    data: Union[List[Dict], Dict[str, List[Dict]]]  # Support both single and relational data
+    domain: str
+
+@app.post("/export/csv")
+def export_csv_post(
+    request: ExportRequest,
     current_user: User = Depends(get_current_user)
 ):
     try:
-        refined_prompt = generator.refine_prompt(custom_prompt) if custom_prompt else None
-
-        if domain == "Custom" and refined_prompt:
-            data = generator.generate_custom_data(refined_prompt, rows, constraints=None)
-        elif refined_prompt:
-            data = generator.generate_sample_data(domain, rows, constraints=None, custom_prompt=refined_prompt)
+        print(f"🔍 CSV Export: Received data for domain '{request.domain}'")
+        
+        # Handle relational data (convert to single list)
+        if isinstance(request.data, dict):
+            # Flatten relational data
+            all_data = []
+            for table_name, table_data in request.data.items():
+                for record in table_data:
+                    record['_table'] = table_name  # Add table identifier
+                    all_data.append(record)
+            data_to_export = all_data
         else:
-            data = generator.generate_sample_data(domain, rows, constraints=None, custom_prompt=None)
+            data_to_export = request.data
             
-        csv_content = exporter.to_csv(data)
-        filename = f"{domain}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        print(f"🔍 CSV Export: Processing {len(data_to_export)} records")
+        
+        csv_content = exporter.to_csv(data_to_export)
+        filename = f"{request.domain}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         
         return Response(
             content=csv_content,
@@ -413,59 +468,52 @@ def export_csv(
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"🔍 CSV Export Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"CSV export failed: {str(e)}")
 
-@app.get("/export/json")
-def export_json(
-    domain: str, 
-    rows: int = 10, 
-    custom_prompt: Optional[str] = None,
+@app.post("/export/excel")
+def export_excel_post(
+    request: ExportRequest,
     current_user: User = Depends(get_current_user)
 ):
     try:
-        refined_prompt = generator.refine_prompt(custom_prompt) if custom_prompt else None
-
-        if domain == "Custom" and refined_prompt:
-            data = generator.generate_custom_data(refined_prompt, rows, constraints=None)
-        elif refined_prompt:
-            data = generator.generate_sample_data(domain, rows, constraints=None, custom_prompt=refined_prompt)
-        else:
-            data = generator.generate_sample_data(domain, rows, constraints=None, custom_prompt=None)
-            
-        json_content = exporter.to_json(data)
-        filename = f"{domain}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        print(f"🔍 Excel Export: Received data for domain '{request.domain}'")
         
-        return Response(
-            content=json_content,
-            media_type="application/json",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/export/excel")
-def export_excel(
-    domain: str, 
-    rows: int = 10, 
-    custom_prompt: Optional[str] = None,
-    current_user: User = Depends(get_current_user)
-):
-    try:
-        refined_prompt = generator.refine_prompt(custom_prompt) if custom_prompt else None
-
-        if domain == "Custom" and refined_prompt:
-            data = generator.generate_custom_data(refined_prompt, rows, constraints=None)
-        elif refined_prompt:
-            data = generator.generate_sample_data(domain, rows, constraints=None, custom_prompt=refined_prompt)
+        # Handle relational data
+        if isinstance(request.data, dict):
+            # For relational data, create multiple sheets
+            excel_content = exporter.to_excel_bytes_relational(request.data)
         else:
-            data = generator.generate_sample_data(domain, rows, constraints=None, custom_prompt=None)
+            # Single table data
+            excel_content = exporter.to_excel_bytes(request.data)
             
-        excel_content = exporter.to_excel_bytes(data)
-        filename = f"{domain}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        print(f"🔍 Excel Export: Generated {len(excel_content)} bytes")
+        
+        filename = f"{request.domain}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         
         return Response(
             content=excel_content,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        print(f"🔍 Excel Export Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Excel export failed: {str(e)}")
+
+@app.post("/export/json")
+def export_json_post(
+    request: ExportRequest,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        print(f"🔍 JSON Export: Received data for domain '{request.domain}'")
+        
+        json_content = exporter.to_json(request.data)
+        filename = f"{request.domain}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        
+        return Response(
+            content=json_content,
+            media_type="application/json",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     except Exception as e:
