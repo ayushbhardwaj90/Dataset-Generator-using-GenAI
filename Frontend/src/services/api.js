@@ -101,6 +101,19 @@ const api = {
       console.log('🔍 Export response status:', response.status);
       console.log('🔍 Export response headers:', Object.fromEntries(response.headers.entries()));
 
+      // CHECK CONTENT TYPE
+      const contentType = response.headers.get('content-type');
+      console.log('🔍 Content-Type:', contentType);
+    
+      // CHECK CONTENT LENGTH  
+      const contentLength = response.headers.get('content-length');
+      console.log('🔍 Content-Length:', contentLength);
+    
+      // CHECK CONTENT DISPOSITION
+      const contentDisposition = response.headers.get('content-disposition');
+      console.log('🔍 Content-Disposition:', contentDisposition);
+
+
       if (!response.ok) {
         let errorDetail = `HTTP ${response.status}: ${response.statusText}`;
         try {
@@ -112,6 +125,15 @@ const api = {
           console.log('🔍 Export error: Response not JSON (possibly binary data error)');
         }
         throw new Error(errorDetail);
+      }
+
+      // PEEK AT THE RESPONSE CONTENT (first 100 characters)
+      const responseClone = response.clone();
+      try {
+        const text = await responseClone.text();
+        console.log('🔍 Response preview (first 100 chars):', text.substring(0, 100));
+      } catch (e) {
+        console.log('🔍 Could not preview response content');
       }
 
       console.log('🔍 Export response successful');

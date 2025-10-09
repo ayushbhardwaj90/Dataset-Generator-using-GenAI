@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-import google.api_core.exceptions as api_exceptions  # Import the specific Gemini API exception
+import google.api_core.exceptions as api_exceptions
 import pandas as pd
 from auth_new import auth_manager, get_current_user, get_db
 from authlib.integrations.starlette_client import OAuth as OAuthClient
@@ -34,21 +34,35 @@ from starlette.middleware.sessions import SessionMiddleware
 
 app = FastAPI(title="Synthetic Dataset Generator with GenAI", version="2.0.0")
 
-# CORS configuration - updated for production deployment
+# CORS configuration - FIXED
 origins = [
     "http://127.0.0.1:3000",
     "http://localhost:3000",
     "https://data-genie-jade.vercel.app",
-    "https://*.vercel.app",
+    # Add your exact Vercel preview URLs if needed
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicitly include OPTIONS
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
+
+# Explicit OPTIONS handlers
+@app.options("/register")
+async def options_register():
+    return {"message": "OK"}
+
+@app.options("/token") 
+async def options_token():
+    return {"message": "OK"}
+
+@app.options("/generate")
+async def options_generate():
+    return {"message": "OK"}
 
 generator = DatasetGenerator()
 

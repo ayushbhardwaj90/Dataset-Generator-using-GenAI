@@ -1,7 +1,8 @@
+import Lenis from '@studio-freight/lenis';
 import { FileJson, FileSpreadsheet, FileText, HelpCircle, History, LogOut, PlayCircle, SquarePen, Table } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { Toaster, toast } from 'react-hot-toast';
 import Joyride from 'react-joyride';
-import { Notification } from './components/Notification';
 import { ForgotPasswordForm } from './components/auth/ForgotPasswordForm';
 import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
@@ -12,7 +13,6 @@ import { GettingStarted } from './components/views/GettingStarted';
 import { HistoryView } from './components/views/HistoryView';
 import { LandingPage } from './components/views/LandingPage';
 import { useAuth } from './context/AuthContext';
-import { api } from './services/api';
 
 const App = () => {
   const { user, loading, logout, token, API_BASE_URL } = useAuth();
@@ -20,17 +20,31 @@ const App = () => {
   const [generatedData, setGeneratedData] = useState(null);
   const [generatedRelationalData, setGeneratedRelationalData] = useState(null);
   const [isRelationalOutput, setIsRelationalOutput] = useState(false);
-  const [notification, setNotification] = useState(null);
 
-  // Tour state
   const [runTour, setRunTour] = useState(false);
   const [tourSteps, setTourSteps] = useState([]);
 
-  // Refs for tour targeting
   const generateButtonRef = useRef(null);
   const historyButtonRef = useRef(null);
   const gettingStartedButtonRef = useRef(null);
   const exportsButtonRef = useRef(null);
+
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+    });
+
+    function raf(time) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+
+    requestAnimationFrame(raf);
+
+    return () => lenis.destroy();
+  }, []);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -106,7 +120,7 @@ const App = () => {
     setGeneratedRelationalData(null);
     setIsRelationalOutput(false);
     setView('generate');
-    setNotification({ message: 'Data generated successfully!', type: 'success' });
+    toast.success('Data generated successfully!');
   };
 
   const handleRelationalGenerateSuccess = (data) => {
@@ -114,42 +128,26 @@ const App = () => {
     setGeneratedData(null);
     setIsRelationalOutput(true);
     setView('generate');
-    setNotification({ message: 'Relational data generated successfully!', type: 'success' });
+    toast.success('Relational data generated successfully!');
   };
 
   const handleSelectHistoryEntry = (entry) => {
-    console.log('🔍 HISTORY ENTRY CLICKED!', entry);  // ← Add this line first
-    console.log('🔍 Full entry received:', entry);
-    console.log('🔍 data_json field:', entry.data_json);
-    console.log('🔍 preview field:', entry.preview);
-    
    try {
     let parsedData;
     
-    // Try to use full data_json first (this contains ALL the data)
     if (entry.data_json && entry.data_json !== 'null' && entry.data_json !== 'undefined') {
-      console.log('🔍 Using data_json for full dataset');
       if (typeof entry.data_json === 'string') {
         parsedData = JSON.parse(entry.data_json);
       } else {
         parsedData = entry.data_json;
       }
     } else {
-      // Fallback to preview (only 1 record)
-      console.log('🔍 Falling back to preview (limited data)');
       parsedData = entry.preview;
-      setNotification({ 
-        message: 'Only preview available - showing first record only', 
-        type: 'warning' 
-      });
+      toast('Only preview available - showing first record only', { icon: '⚠️' });
     }
     
-    console.log('🔍 Final parsed data:', parsedData);
-    console.log('🔍 Number of records:', Array.isArray(parsedData) ? parsedData.length : 'Not an array');
-    
-    // Check if we have any data
     if (!parsedData || (Array.isArray(parsedData) && parsedData.length === 0)) {
-      setNotification({ message: 'No data found for this history entry.', type: 'error' });
+      toast.error('No data found for this history entry.');
       return;
     }
     
@@ -164,80 +162,81 @@ const App = () => {
     }
     
     setView('generate');
-    setNotification({ message: 'History data loaded successfully!', type: 'success' });
+    toast.success('History data loaded successfully!');
   } catch (e) {
-    console.error("Error loading history data:", e);
-    setNotification({ message: `Failed to load history data: ${e.message}`, type: 'error' });
+    toast.error(`Failed to load history data: ${e.message}`);
   }
 };
 
-  // Add the missing onStartAugmentation function
   const handleStartAugmentation = (historyId, data) => {
-    // Placeholder for augmentation functionality
-    // You can implement this based on your backend's augmentation endpoint
     console.log('Starting augmentation for history ID:', historyId, 'with data:', data);
-    setNotification({ message: 'Augmentation feature coming soon!', type: 'info' });
+    toast.info('Augmentation feature coming soon!');
   };
 
-  // FIXED handleExport function
   const handleExport = async (format) => {
     if (!generatedData && !generatedRelationalData) {
-      setNotification({ message: 'No data to export!', type: 'error' });
+      toast.error('No data to export!');
       return;
     }
 
+    const toastId = toast.loading(`Exporting to ${format.toUpperCase()}...`);
+
     try {
-      const rows = isRelationalOutput
-        ? Object.values(generatedRelationalData).reduce((total, arr) => total + arr.length, 0)
-        : (generatedData ? generatedData.length : 0);
+      const dataToExport = isRelationalOutput ? generatedRelationalData : generatedData;
       const domain = isRelationalOutput ? 'Relational' : 'Generated';
 
-      const response = await api.exportData(format, domain, rows, null, token, API_BASE_URL);
-      
+      const response = await fetch(`${API_BASE_URL}/export/${format}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          data: dataToExport,
+          domain: domain
+        })
+      });
+
       if (!response || !response.ok) {
-        throw new Error("Export request failed");
+        throw new Error(`Export failed with status: ${response.status}`);
       }
 
-      // Create blob from response
+      let mimeType = 'application/octet-stream';
+      switch (format) {
+        case 'csv':
+          mimeType = 'text/csv';
+          break;
+        case 'json':
+          mimeType = 'application/json';
+          break;
+        case 'excel':
+          mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+          break;
+        default:
+          break;
+      }
+
       const blob = await response.blob();
+      const correctedBlob = new Blob([blob], { type: mimeType });
       
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(correctedBlob);
       const link = document.createElement('a');
       link.href = url;
+      link.style.display = 'none';
       
-      // Set proper filename with extension
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-      let filename = `dataset_${domain}_${timestamp}.${format}`;
+      const extension = format === 'excel' ? 'xlsx' : format;
+      const filename = `dataset_${domain}_${timestamp}.${extension}`;
+      link.download = filename;
       
-      // Try to get filename from Content-Disposition header
-      const contentDisposition = response.headers.get('Content-Disposition');
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
-        }
-      }
-
-      link.setAttribute('download', filename);
-      
-      // Trigger download
       document.body.appendChild(link);
       link.click();
-      
-      // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      setNotification({ message: `Successfully exported to ${format.toUpperCase()}!`, type: 'success' });
+      toast.success(`Successfully exported to ${format.toUpperCase()}!`, { id: toastId });
     } catch (err) {
-      console.error('Export error:', err);
-      if (err.message && err.message.includes('Could not validate credentials')) {
-        setNotification({ message: 'Session expired. Please log in again.', type: 'error' });
-        logout();
-      } else {
-        setNotification({ message: `Export failed: ${err.message || 'Unknown error'}`, type: 'error' });
-      }
+      toast.error(`Export failed: ${err.message || 'Unknown error'}`, { id: toastId });
     }
   };
 
@@ -255,16 +254,10 @@ const App = () => {
   if (!user) {
     return (
       <div>
-        {notification && (
-          <Notification
-            message={notification.message}
-            type={notification.type}
-            onClose={() => setNotification(null)}
-          />
-        )}
-        {view === 'register' && <RegisterForm onRegisterSuccess={() => { setView('login'); setNotification({ message: 'Registration successful! Please log in.', type: 'success' }); }} onViewChange={setView} />}
+        <Toaster position="top-right" />
+        {view === 'register' && <RegisterForm onRegisterSuccess={() => { setView('login'); toast.success('Registration successful! Please log in.'); }} onViewChange={setView} />}
         {view === 'forgot-password' && <ForgotPasswordForm onPasswordResetRequest={() => setView('login')} onViewChange={setView} />}
-        {view === 'reset-password' && <ResetPasswordForm onPasswordResetSuccess={() => { setView('login'); setNotification({ message: 'Password reset successful! Please log in with your new password.', type: 'success' }); }} />}
+        {view === 'reset-password' && <ResetPasswordForm onPasswordResetSuccess={() => { setView('login'); toast.success('Password reset successful! Please log in.'); }} />}
         {view === 'login' && <LoginForm onLoginSuccess={() => setView('generate')} onForgotPassword={() => setView('forgot-password')} />}
         {view !== 'register' && view !== 'forgot-password' && view !== 'reset-password' && view !== 'login' && <LandingPage onViewChange={setView} />}
       </div>
@@ -272,7 +265,13 @@ const App = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="flex h-screen bg-gray-100 dark:main-content-gradient">
+      <Toaster position="top-right" toastOptions={{
+        style: {
+          background: '#333',
+          color: '#fff',
+        },
+      }}/>
       <Joyride
         steps={tourSteps}
         run={runTour}
@@ -287,27 +286,28 @@ const App = () => {
         }}
       />
 
-      {notification && (
-        <Notification
-          message={notification.message}
-          type={notification.type}
-          onClose={() => setNotification(null)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className="w-64 bg-white dark:bg-gray-800 shadow-md">
+      <div className="w-64 bg-white dark:bg-gray-800 shadow-md flex flex-col">
         <div className="p-4 border-b dark:border-gray-700">
           <h1 className="text-xl font-bold text-gray-800 dark:text-white">Dataset Generator</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Welcome, {user?.username}!</p>
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Welcome, {user?.username}!</p>
+            <button
+              onClick={logout}
+              className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-500 p-1 rounded-md transition-colors flex items-center gap-1 text-sm"
+              title="Logout"
+            >
+              <LogOut size={16} />
+              Logout
+            </button>
+          </div>
         </div>
         
-        <nav className="mt-4">
+        <nav className="mt-4 flex-1">
           <button
             ref={generateButtonRef}
             onClick={() => setView('generate')}
-            className={`tour-step-1 w-full text-left px-4 py-3 flex items-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-              view === 'generate' ? 'bg-purple-100 dark:bg-purple-900 border-r-4 border-purple-600' : ''
+            className={`tour-step-1 w-full text-left px-4 py-3 flex items-center dark:hover:bg-purple-800/20 transition-colors duration-300 ${
+              view === 'generate' ? 'bg-purple-100 dark:bg-purple-900 border-r-4 border-purple-600' : 'hover:bg-gray-100'
             }`}
           >
             <SquarePen className="mr-3" size={20} />
@@ -317,8 +317,8 @@ const App = () => {
           <button
             ref={historyButtonRef}
             onClick={() => setView('history')}
-            className={`tour-step-2 w-full text-left px-4 py-3 flex items-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-              view === 'history' ? 'bg-purple-100 dark:bg-purple-900 border-r-4 border-purple-600' : ''
+            className={`tour-step-2 w-full text-left px-4 py-3 flex items-center dark:hover:bg-purple-800/20 transition-colors duration-300 ${
+              view === 'history' ? 'bg-purple-100 dark:bg-purple-900 border-r-4 border-purple-600' : 'hover:bg-gray-100'
             }`}
           >
             <History className="mr-3" size={20} />
@@ -328,8 +328,8 @@ const App = () => {
           <button
             ref={gettingStartedButtonRef}
             onClick={() => setView('getting-started')}
-            className={`tour-step-4 w-full text-left px-4 py-3 flex items-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-              view === 'getting-started' ? 'bg-purple-100 dark:bg-purple-900 border-r-4 border-purple-600' : ''
+            className={`tour-step-4 w-full text-left px-4 py-3 flex items-center dark:hover:bg-purple-800/20 transition-colors duration-300 ${
+              view === 'getting-started' ? 'bg-purple-100 dark:bg-purple-900 border-r-4 border-purple-600' : 'hover:bg-gray-100'
             }`}
           >
             <HelpCircle className="mr-3" size={20} />
@@ -338,29 +338,17 @@ const App = () => {
           
           <button
             onClick={handleStartTour}
-            className="w-full text-left px-4 py-3 flex items-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="w-full text-left px-4 py-3 flex items-center hover:bg-gray-100 dark:hover:bg-purple-800/20 transition-colors duration-300"
           >
             <PlayCircle className="mr-3" size={20} />
             <span className="font-medium">Take Tour</span>
           </button>
         </nav>
-        
-        <div className="absolute bottom-4 left-4 right-4">
-          <button
-            onClick={logout}
-            className="w-full bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg flex items-center justify-center transition-colors"
-          >
-            <LogOut className="mr-2" size={20} />
-            Logout
-          </button>
-        </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 overflow-hidden">
         {view === 'generate' && (
           <div className="flex h-full">
-            {/* Left Panel - Generation Form */}
             <div className="w-1/2 p-6 overflow-y-auto border-r dark:border-gray-700">
               <GenerationForm
                 onGenerateSuccess={handleGenerateSuccess}
@@ -368,7 +356,6 @@ const App = () => {
               />
             </div>
             
-            {/* Right Panel - Generated Data Display */}
             <div className="w-1/2 p-6 overflow-y-auto bg-gray-50 dark:bg-gray-800">
               {(generatedData || generatedRelationalData) ? (
                 <>
@@ -421,4 +408,3 @@ const App = () => {
 };
 
 export default App;
-

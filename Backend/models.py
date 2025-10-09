@@ -32,10 +32,37 @@ class GenerationHistory(Base):
     user_id = Column(Integer, nullable=True)  # Will link to User.id
     custom_prompt = Column(Text, nullable=True)  # For custom domain prompts
 
-# Database setup
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./synthetic_app.db")
-engine = create_engine(DATABASE_URL)
+# Database setup - UPDATED FOR POSTGRESQL SUPPORT
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Railway provides DATABASE_URL with postgres:// which SQLAlchemy 2.0 doesn't support
+# Need to convert to postgresql://
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    print(f"✅ Converted postgres:// to postgresql:// for SQLAlchemy 2.0 compatibility")
+
+# Fallback to SQLite for local development
+if not DATABASE_URL:
+    print("⚠️  No DATABASE_URL found, using SQLite for local development")
+    DATABASE_URL = "sqlite:///./synthetic_app.db"
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    # PostgreSQL connection with connection pooling for production
+    print(f"✅ Using PostgreSQL database")
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,      # Verify connections before using
+        pool_recycle=3600,       # Recycle connections after 1 hour
+        pool_size=10,            # Maximum number of connections to keep open
+        max_overflow=20,         # Maximum number of connections to create beyond pool_size
+        echo=False               # Set to True for SQL query logging (debugging)
+    )
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create all tables
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+    print("✅ Database tables created successfully")
+except Exception as e:
+    print(f"❌ Error creating database tables: {e}")

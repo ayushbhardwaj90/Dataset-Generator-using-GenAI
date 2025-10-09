@@ -1,5 +1,9 @@
 
 export const DataTable = ({ data, isRelational }) => {
+  console.log('🔍 DataTable received data:', data);
+  console.log('🔍 DataTable data length:', Array.isArray(data) ? data.length : 'Not an array');
+  console.log('🔍 DataTable isRelational:', isRelational);
+  
   if (!data || Object.keys(data).length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center text-gray-600 dark:text-gray-400">
