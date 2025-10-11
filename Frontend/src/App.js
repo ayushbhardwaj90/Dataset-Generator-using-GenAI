@@ -7,12 +7,14 @@ import { ForgotPasswordForm } from './components/auth/ForgotPasswordForm';
 import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
 import { ResetPasswordForm } from './components/auth/ResetPasswordForm';
+import LiquidEther from './components/backgrounds/LiquidEther';
 import { DataTable } from './components/data/DataTable';
 import { GenerationForm } from './components/data/GenerationForm';
 import { GettingStarted } from './components/views/GettingStarted';
 import { HistoryView } from './components/views/HistoryView';
 import { LandingPage } from './components/views/LandingPage';
 import { useAuth } from './context/AuthContext';
+
 
 const App = () => {
   const { user, loading, logout, token, API_BASE_URL } = useAuth();
@@ -21,13 +23,16 @@ const App = () => {
   const [generatedRelationalData, setGeneratedRelationalData] = useState(null);
   const [isRelationalOutput, setIsRelationalOutput] = useState(false);
 
+
   const [runTour, setRunTour] = useState(false);
   const [tourSteps, setTourSteps] = useState([]);
+
 
   const generateButtonRef = useRef(null);
   const historyButtonRef = useRef(null);
   const gettingStartedButtonRef = useRef(null);
   const exportsButtonRef = useRef(null);
+
 
   useEffect(() => {
     const lenis = new Lenis({
@@ -36,15 +41,19 @@ const App = () => {
       smoothWheel: true,
     });
 
+
     function raf(time) {
       lenis.raf(time);
       requestAnimationFrame(raf);
     }
 
+
     requestAnimationFrame(raf);
+
 
     return () => lenis.destroy();
   }, []);
+
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -53,6 +62,7 @@ const App = () => {
       setView('reset-password');
     }
   }, []);
+
 
   useEffect(() => {
     const steps = [
@@ -85,11 +95,13 @@ const App = () => {
     ];
     setTourSteps(steps);
 
+
     if (user && !localStorage.getItem('onboarding_completed')) {
       setRunTour(true);
       localStorage.setItem('onboarding_completed', 'true');
     }
   }, [user]);
+
 
   const handleJoyrideCallback = (data) => {
     const { status, index, type } = data;
@@ -110,10 +122,12 @@ const App = () => {
     }
   };
 
+
   const handleStartTour = () => {
     setRunTour(true);
     setView('generate');
   };
+
 
   const handleGenerateSuccess = (data) => {
     setGeneratedData(data.data);
@@ -123,6 +137,7 @@ const App = () => {
     toast.success('Data generated successfully!');
   };
 
+
   const handleRelationalGenerateSuccess = (data) => {
     setGeneratedRelationalData(data.data);
     setGeneratedData(null);
@@ -130,6 +145,7 @@ const App = () => {
     setView('generate');
     toast.success('Relational data generated successfully!');
   };
+
 
   const handleSelectHistoryEntry = (entry) => {
    try {
@@ -168,10 +184,12 @@ const App = () => {
   }
 };
 
+
   const handleStartAugmentation = (historyId, data) => {
     console.log('Starting augmentation for history ID:', historyId, 'with data:', data);
     toast.info('Augmentation feature coming soon!');
   };
+
 
   const handleExport = async (format) => {
     if (!generatedData && !generatedRelationalData) {
@@ -179,11 +197,14 @@ const App = () => {
       return;
     }
 
+
     const toastId = toast.loading(`Exporting to ${format.toUpperCase()}...`);
+
 
     try {
       const dataToExport = isRelationalOutput ? generatedRelationalData : generatedData;
       const domain = isRelationalOutput ? 'Relational' : 'Generated';
+
 
       const response = await fetch(`${API_BASE_URL}/export/${format}`, {
         method: 'POST',
@@ -197,9 +218,11 @@ const App = () => {
         })
       });
 
+
       if (!response || !response.ok) {
         throw new Error(`Export failed with status: ${response.status}`);
       }
+
 
       let mimeType = 'application/octet-stream';
       switch (format) {
@@ -215,6 +238,7 @@ const App = () => {
         default:
           break;
       }
+
 
       const blob = await response.blob();
       const correctedBlob = new Blob([blob], { type: mimeType });
@@ -240,6 +264,7 @@ const App = () => {
     }
   };
 
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -253,16 +278,49 @@ const App = () => {
   
   if (!user) {
     return (
-      <div>
+      <div style={{ position: 'relative', minHeight: '100vh' }}>
         <Toaster position="top-right" />
-        {view === 'register' && <RegisterForm onRegisterSuccess={() => { setView('login'); toast.success('Registration successful! Please log in.'); }} onViewChange={setView} />}
-        {view === 'forgot-password' && <ForgotPasswordForm onPasswordResetRequest={() => setView('login')} onViewChange={setView} />}
-        {view === 'reset-password' && <ResetPasswordForm onPasswordResetSuccess={() => { setView('login'); toast.success('Password reset successful! Please log in.'); }} />}
-        {view === 'login' && <LoginForm onLoginSuccess={() => setView('generate')} onForgotPassword={() => setView('forgot-password')} />}
-        {view !== 'register' && view !== 'forgot-password' && view !== 'reset-password' && view !== 'login' && <LandingPage onViewChange={setView} />}
+        
+        {/* LiquidEther Background - Only for auth pages */}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          zIndex: 0
+        }}>
+          <LiquidEther
+            colors={['#4285F4', '#EA4335', '#34A853']}
+            mouseForce={20}
+            cursorSize={100}
+            isViscous={false}
+            viscous={30}
+            iterationsViscous={32}
+            iterationsPoisson={32}
+            resolution={0.5}
+            isBounce={false}
+            autoDemo={true}
+            autoSpeed={0.5}
+            autoIntensity={2.2}
+            takeoverDuration={0.25}
+            autoResumeDelay={3000}
+            autoRampDuration={0.6}
+          />
+        </div>
+
+        {/* Auth Content Layer */}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          {view === 'register' && <RegisterForm onRegisterSuccess={() => { setView('login'); toast.success('Registration successful! Please log in.'); }} onViewChange={setView} />}
+          {view === 'forgot-password' && <ForgotPasswordForm onPasswordResetRequest={() => setView('login')} onViewChange={setView} />}
+          {view === 'reset-password' && <ResetPasswordForm onPasswordResetSuccess={() => { setView('login'); toast.success('Password reset successful! Please log in.'); }} />}
+          {view === 'login' && <LoginForm onLoginSuccess={() => setView('generate')} onForgotPassword={() => setView('forgot-password')} />}
+          {view !== 'register' && view !== 'forgot-password' && view !== 'reset-password' && view !== 'login' && <LandingPage onViewChange={setView} />}
+        </div>
       </div>
     );
   }
+
 
   return (
     <div className="flex h-screen bg-gray-100 dark:main-content-gradient">
@@ -285,6 +343,7 @@ const App = () => {
           }
         }}
       />
+
 
       <div className="w-64 bg-white dark:bg-gray-800 shadow-md flex flex-col">
         <div className="p-4 border-b dark:border-gray-700">
@@ -346,6 +405,7 @@ const App = () => {
         </nav>
       </div>
 
+
       <div className="flex-1 overflow-hidden">
         {view === 'generate' && (
           <div className="flex h-full">
@@ -388,6 +448,7 @@ const App = () => {
           </div>
         )}
 
+
         {view === 'history' && (
           <div className="h-full overflow-y-auto">
             <HistoryView 
@@ -396,6 +457,7 @@ const App = () => {
             />
           </div>
         )}
+
 
         {view === 'getting-started' && (
           <div className="h-full overflow-y-auto p-6">
@@ -407,4 +469,7 @@ const App = () => {
   );
 };
 
+
 export default App;
+
+
